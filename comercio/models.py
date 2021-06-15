@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save, pre_save
+from django.dispatch import receiver
 
 class Marca(models.Model):
     nombre = models.CharField(max_length=50)
@@ -45,6 +47,7 @@ class Producto(models.Model):
     precio = models.FloatField()
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     marca = models.ForeignKey(Marca, on_delete=models.CASCADE)
+    proveedor = models.OneToOneField(Proveedor, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.nombre
@@ -56,7 +59,6 @@ class Producto(models.Model):
         verbose_name_plural = 'Productos'
 
 class Stock(models.Model):
-    proveedor = models.OneToOneField(Proveedor, on_delete=models.CASCADE)
     producto = models.OneToOneField(Producto, on_delete=models.CASCADE)
     cantidad = models.IntegerField()
 
@@ -72,11 +74,15 @@ class Stock(models.Model):
 class Carrito(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     vendido = models.BooleanField()
-    precioFinal = models.FloatField()
-    precioVendido = models.FloatField()
+    precioFinal = models.FloatField(null = True, blank = True)
+    precioVendido = models.FloatField(null = True, blank = True)
 
     def __str__(self):
-        return f'Carrito {self.id} de {self.usuario.nombre}: vendido {self.vendido}'
+        if self.vendido:
+            return f'Carrito {self.id} de {self.usuario.username} esta vendido'
+        else:
+            return f'Carrito {self.id} de {self.usuario.username} no esta vendido'
+        
 
     class Meta:
         db_table = ''
@@ -88,8 +94,7 @@ class Carrito(models.Model):
 class ProductoAgregado(models.Model):
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
     unidades = models.IntegerField()
-    precioUnidad = models.FloatField()
-    precioVendido = models.FloatField()
+    precioVendido = models.FloatField(null = True, blank = True)
     carrito = models.ForeignKey(Carrito, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -100,3 +105,37 @@ class ProductoAgregado(models.Model):
         managed = True
         verbose_name = 'ProductoAgregado'
         verbose_name_plural = 'ProductosAgregados'
+
+        
+@receiver(pre_save, sender=Carrito)
+def pre_finish_purchase(sender, instance, **kwargs):
+    if instance.vendido:
+        raise Exception('Este carrito ya se encuentra vendido') # si esta vendido, cancela el guardado y tira una excepcion
+
+@receiver(post_save, sender=Carrito)
+def finish_purchase(sender, instance, created, **kwargs):
+    if not getattr(instance, 'processed', False):
+        if not created:
+            if instance.vendido:
+                productos_agredados = ProductoAgregado.objects.filter(carrito = instance) # traemos todos los productos del carrito
+                if(productos_agredados.count() > 0):
+                    for a in productos_agredados:
+                        producto = Producto.objects.get(id = a.producto.id) # traemos el producto
+                        if instance.precioFinal == None:
+                            instance.precioFinal = 0
+                        producto_precioFinal = a.unidades * producto.precio # producto de las unidades con el precio
+                        instance.precioFinal += producto_precioFinal
+                        a.precioVendido = producto_precioFinal
+                        a.save() # guardamos el producto
+                        instance.precioVendido = instance.precioFinal # nos aseguramos que el precio no cambie con respecto al precio del producto
+                        productos_stock = Stock.objects.filter(producto = producto) # traemos los stock
+                        for b in productos_stock:
+                            b.cantidad -= a.unidades # reducir stock
+                            b.save()
+                    instance.processed = True
+                    instance.save()
+
+@receiver(post_save, sender=Producto)
+def create_stock(sender, instance, created, **kwargs):
+    if created:
+        Stock.objects.create(producto=instance, cantidad = 0) # creamos un stock del producto
