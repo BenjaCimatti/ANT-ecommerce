@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+from model_utils import FieldTracker
 
 class Marca(models.Model):
     nombre = models.CharField(max_length=50)
@@ -49,6 +50,8 @@ class Producto(models.Model):
     marca = models.ForeignKey(Marca, on_delete=models.CASCADE)
     proveedor = models.OneToOneField(Proveedor, on_delete=models.CASCADE)
 
+    tracker = FieldTracker()
+
     def __str__(self):
         return self.nombre
 
@@ -77,11 +80,13 @@ class Carrito(models.Model):
     precioFinal = models.FloatField(null = True, blank = True)
     precioVendido = models.FloatField(null = True, blank = True)
 
+    tracker = FieldTracker()
+
     def __str__(self):
         if self.vendido:
-            return f'Carrito {self.id} de {self.usuario.username} esta vendido'
+            return f'Carrito de {self.usuario.username} [Vendido]'
         else:
-            return f'Carrito {self.id} de {self.usuario.username} no esta vendido'
+            return f'Carrito de {self.usuario.username} [No Vendido]'
         
 
     class Meta:
@@ -112,35 +117,47 @@ def finish_purchase(sender, instance, created, **kwargs):
     if not getattr(instance, 'processed', False):
         if not created:
             if instance.vendido:
-                productos_agredados = ProductoAgregado.objects.filter(carrito = instance) # traemos todos los productos del carrito
-                if(productos_agredados.count() > 0):
-                    for a in productos_agredados:
-                        producto = Producto.objects.get(id = a.producto.id) # traemos el producto
-                        if instance.precioFinal == None:
-                            instance.precioFinal = 0
-                        producto_precioFinal = a.unidades * producto.precio # producto de las unidades con el precio
-                        a.precioVendido = producto_precioFinal
-                        a.save() # guardamos el producto
-                        instance.precioVendido = instance.precioFinal # nos aseguramos que el precio no cambie con respecto al precio del producto
-                        productos_stock = Stock.objects.filter(producto = producto) # traemos los stock
-                        for b in productos_stock:
-                            b.cantidad -= a.unidades # reducir stock
-                            b.save()
-                    instance.processed = True
-                    instance.save()
-            else:
-                productos_agredados = ProductoAgregado.objects.filter(carrito = instance) # traemos todos los productos del carrito
-                if(productos_agredados.count() > 0):
-                    for a in productos_agredados:
-                        producto = Producto.objects.get(id = a.producto.id) # traemos el producto
-                        if instance.precioFinal == None:
-                            instance.precioFinal = 0
-                        producto_precioFinal = a.unidades * producto.precio # producto de las unidades con el precio
-                        instance.precioFinal += producto_precioFinal
-                    instance.processed = True
-                    instance.save()
+                vendidoAnterior = instance.tracker.previous('vendido')
+                vendidoNuevo = instance.vendido
+                if vendidoAnterior != vendidoNuevo:
+                    productos_agredados = ProductoAgregado.objects.filter(carrito = instance) # traemos todos los productos del carrito
+                    if(productos_agredados.count() > 0):
+                        for a in productos_agredados:
+                            producto = Producto.objects.get(id = a.producto.id) # traemos el producto
+                            if instance.precioFinal == None:
+                                instance.precioFinal = 0
+                            producto_precioFinal = a.unidades * producto.precio # producto de las unidades con el precio
+                            a.precioVendido = producto_precioFinal
+                            a.save() # guardamos el producto
+                            instance.precioVendido = instance.precioFinal # nos aseguramos que el precio no cambie con respecto al precio del producto
+                            productos_stock = Stock.objects.filter(producto = producto) # traemos los stock
+                            for b in productos_stock:
+                                b.cantidad -= a.unidades # reducir stock
+                                b.save()
+                        instance.processed = True
+                        instance.save()
 
 @receiver(post_save, sender=Producto)
 def create_stock(sender, instance, created, **kwargs):
     if created:
         Stock.objects.create(producto=instance, cantidad = 0) # creamos un stock del producto
+    else:
+        precioAnterior = instance.tracker.previous('precio')
+        precioNuevo = instance.precio
+
+        if precioAnterior != precioNuevo:
+            productos_agregados = ProductoAgregado.objects.filter(producto = instance) # Productos agregados con el producto en cuestion
+            for producto_agregado in productos_agregados:
+                producto_agregado.carrito.precioFinal -= precioAnterior
+                producto_agregado.carrito.precioFinal += precioNuevo
+                producto_agregado.carrito.save()            
+
+@receiver(post_save, sender=ProductoAgregado)
+def save_price(sender, instance, created, **kwargs):
+    if created:
+        carrito = Carrito.objects.get(id=instance.carrito.id)
+        producto = Producto.objects.get(id=instance.producto.id)
+        if carrito.precioFinal == None:
+            carrito.precioFinal = 0
+        carrito.precioFinal += producto.precio
+        carrito.save()
