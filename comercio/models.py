@@ -63,7 +63,7 @@ class Stock(models.Model):
     cantidad = models.IntegerField()
 
     def __str__(self):
-        return f'Stock de {self.producto.nombre}: {self.cantidad}'
+        return f'Stock de {self.producto.nombre} {self.producto.marca.nombre}: {self.cantidad}'
 
     class Meta:
         db_table = ''
@@ -73,7 +73,7 @@ class Stock(models.Model):
 
 class Carrito(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
-    vendido = models.BooleanField()
+    vendido = models.BooleanField(default = False)
     precioFinal = models.FloatField(null = True, blank = True)
     precioVendido = models.FloatField(null = True, blank = True)
 
@@ -107,11 +107,6 @@ class ProductoAgregado(models.Model):
         verbose_name_plural = 'ProductosAgregados'
 
         
-@receiver(pre_save, sender=Carrito)
-def pre_finish_purchase(sender, instance, **kwargs):
-    if instance.vendido:
-        raise Exception('Este carrito ya se encuentra vendido') # si esta vendido, cancela el guardado y tira una excepcion
-
 @receiver(post_save, sender=Carrito)
 def finish_purchase(sender, instance, created, **kwargs):
     if not getattr(instance, 'processed', False):
@@ -124,7 +119,6 @@ def finish_purchase(sender, instance, created, **kwargs):
                         if instance.precioFinal == None:
                             instance.precioFinal = 0
                         producto_precioFinal = a.unidades * producto.precio # producto de las unidades con el precio
-                        instance.precioFinal += producto_precioFinal
                         a.precioVendido = producto_precioFinal
                         a.save() # guardamos el producto
                         instance.precioVendido = instance.precioFinal # nos aseguramos que el precio no cambie con respecto al precio del producto
@@ -132,6 +126,17 @@ def finish_purchase(sender, instance, created, **kwargs):
                         for b in productos_stock:
                             b.cantidad -= a.unidades # reducir stock
                             b.save()
+                    instance.processed = True
+                    instance.save()
+            else:
+                productos_agredados = ProductoAgregado.objects.filter(carrito = instance) # traemos todos los productos del carrito
+                if(productos_agredados.count() > 0):
+                    for a in productos_agredados:
+                        producto = Producto.objects.get(id = a.producto.id) # traemos el producto
+                        if instance.precioFinal == None:
+                            instance.precioFinal = 0
+                        producto_precioFinal = a.unidades * producto.precio # producto de las unidades con el precio
+                        instance.precioFinal += producto_precioFinal
                     instance.processed = True
                     instance.save()
 
