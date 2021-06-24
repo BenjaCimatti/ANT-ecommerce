@@ -102,6 +102,8 @@ class ProductoAgregado(models.Model):
     precioVendido = models.FloatField(null = True, blank = True)
     carrito = models.ForeignKey(Carrito, on_delete=models.CASCADE)
 
+    tracker = FieldTracker()
+
     def __str__(self):
         return f'{self.unidades} de {self.producto.nombre}'
 
@@ -159,5 +161,15 @@ def save_price(sender, instance, created, **kwargs):
         producto = Producto.objects.get(id=instance.producto.id)
         if carrito.precioFinal == None:
             carrito.precioFinal = 0
-        carrito.precioFinal += producto.precio
+        carrito.precioFinal += producto.precio * instance.unidades
+        carrito.save()
+    else:
+        carrito = Carrito.objects.get(id=instance.carrito.id)
+        producto = Producto.objects.get(id=instance.producto.id)
+
+        unidadesAnterior = instance.tracker.previous('unidades')
+        unidadesNuevo = instance.unidades
+
+        carrito.precioFinal -= producto.precio * unidadesAnterior
+        carrito.precioFinal += producto.precio * unidadesNuevo
         carrito.save()
