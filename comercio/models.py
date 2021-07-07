@@ -87,7 +87,6 @@ class Carrito(models.Model):
             return f'Carrito de {self.usuario.username} [Vendido]'
         else:
             return f'Carrito de {self.usuario.username} [No Vendido]'
-        
 
     class Meta:
         db_table = ''
