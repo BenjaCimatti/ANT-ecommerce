@@ -1,13 +1,20 @@
-from rest_framework import routers, serializers, viewsets
+from rest_framework import viewsets
 from .models import *
 from .serializers import *
+from rest_framework.authentication import BasicAuthentication
+from rest_framework.permissions import IsAuthenticated
 # Create your views here.
 
 # ViewSets define the view behavior.
 class ProductoViewSet(viewsets.ModelViewSet):
-    queryset = Producto.objects.all()
+    authentication_classes = [BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+    
     serializer_class = ProductoSerializer
     
+    def get_queryset(self):
+        return Producto.objects.all()
+
 # ViewSets define the view behavior.
 class MarcaViewSet(viewsets.ModelViewSet):
     queryset = Marca.objects.all()
