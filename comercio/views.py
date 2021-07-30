@@ -6,14 +6,9 @@ from rest_framework.permissions import IsAuthenticated
 # Create your views here.
 
 # ViewSets define the view behavior.
-class ProductoViewSet(viewsets.ModelViewSet):
-    authentication_classes = [BasicAuthentication]
-    permission_classes = [IsAuthenticated]
-    
+class ProductoViewSet(viewsets.ModelViewSet):    
+    queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
-    
-    def get_queryset(self):
-        return Producto.objects.all()
 
 # ViewSets define the view behavior.
 class MarcaViewSet(viewsets.ModelViewSet):
@@ -37,8 +32,13 @@ class StockViewSet(viewsets.ModelViewSet):
 
 # ViewSets define the view behavior.
 class CarritoViewSet(viewsets.ModelViewSet):
-    queryset = Carrito.objects.all()
+    authentication_classes = [BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+
     serializer_class = CarritoSerializer
+
+    def get_queryset(self):
+        return Carrito.objects.filter(usuario=self.request.user, vendido=False)
 
 # ViewSets define the view behavior.
 class ProductoAgregadoViewSet(viewsets.ModelViewSet):

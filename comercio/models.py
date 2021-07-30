@@ -172,3 +172,8 @@ def save_price(sender, instance, created, **kwargs):
         carrito.precioFinal -= producto.precio * unidadesAnterior
         carrito.precioFinal += producto.precio * unidadesNuevo
         carrito.save()
+
+@receiver(post_save, sender=User)
+def post_create_user(sender, instance, created, **kwargs):
+    if created:
+        carrito = Carrito.objects.create(usuario=instance)
