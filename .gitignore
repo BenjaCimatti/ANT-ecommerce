@@ -65,6 +65,7 @@ db.sqlite3-journal
 **/migrations/**
 **/media/**
 .env
+ant/
 
 # Flask stuff:
 instance/

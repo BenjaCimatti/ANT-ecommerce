@@ -1,8 +1,10 @@
 from rest_framework import viewsets
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from .models import *
 from .serializers import *
-from rest_framework.authentication import BasicAuthentication
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
 # Create your views here.
 
 # ViewSets define the view behavior.
@@ -32,8 +34,8 @@ class StockViewSet(viewsets.ModelViewSet):
 
 # ViewSets define the view behavior.
 class CarritoViewSet(viewsets.ModelViewSet):
-    authentication_classes = [BasicAuthentication]
-    permission_classes = [IsAuthenticated]
+
+    permission_classes = (IsAuthenticated,) 
 
     serializer_class = CarritoSerializer
 
@@ -44,3 +46,13 @@ class CarritoViewSet(viewsets.ModelViewSet):
 class ProductoAgregadoViewSet(viewsets.ModelViewSet):
     queryset = ProductoAgregado.objects.all()
     serializer_class = ProductoAgregadoSerializer
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user(request):
+
+    content = {
+        'user':str(request.user),
+    }
+
+    return Response(content)

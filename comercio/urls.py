@@ -1,6 +1,8 @@
-from django.urls import path, include
+from django.urls import path
+from . import views
 from .views import *
 from rest_framework.routers import DefaultRouter
+from rest_framework.authtoken.views import obtain_auth_token
 
 # urlpatterns = [
 #     path('producto/', ProductoViewSet.as_view({'get': 'list'})),
@@ -22,3 +24,8 @@ router.register("carrito", CarritoViewSet, basename="carrito")
 router.register("producto-agregado", ProductoAgregadoViewSet, basename="producto-agregado")
 
 urlpatterns = router.urls
+
+urlpatterns += [
+    path('get-token/', obtain_auth_token, name='get-token'),
+    path('get-user/', views.get_user, name='get-user'),
+]
