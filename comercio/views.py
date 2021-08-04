@@ -1,11 +1,15 @@
-from rest_framework import viewsets
+from rest_framework import status, viewsets
+from rest_framework.exceptions import bad_request
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from .models import *
 from .serializers import *
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 # Create your views here.
+
+def bad_request(msg):
+    content = {'bad request': msg}
+    return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
 # ViewSets define the view behavior.
 class ProductoViewSet(viewsets.ModelViewSet):    
@@ -56,3 +60,19 @@ def get_user(request):
     }
 
     return Response(content)
+
+@api_view(['POST'])
+def register_user(request):
+    body = request.data
+    username = body["username"]
+    password = body["password"]
+    print(body)
+    print(username)
+    print(password)
+    serializer = UserSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        User.objects.create_user(username=username,password=password)
+        return Response(serializer.data)
+    else:
+        return bad_request('Registro Fallido')

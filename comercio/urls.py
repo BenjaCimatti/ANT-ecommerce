@@ -28,4 +28,5 @@ urlpatterns = router.urls
 urlpatterns += [
     path('get-token/', obtain_auth_token, name='get-token'),
     path('get-user/', views.get_user, name='get-user'),
+    path('register-user/', views.register_user, name='register_user'),
 ]

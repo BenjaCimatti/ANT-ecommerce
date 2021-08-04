@@ -42,3 +42,9 @@ class ProductoAgregadoSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductoAgregado
         fields = '__all__'
+
+class UserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ('username', 'password',)
