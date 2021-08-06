@@ -31,6 +31,12 @@ class StockSerializer(serializers.ModelSerializer):
         model = Stock
         fields = '__all__'
 
+class DeleteProductoAgregadoSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = ProductoAgregado
+        fields = ['id']
+
 class AddProductoAgregadoSerializer(serializers.ModelSerializer):
 
     class Meta:

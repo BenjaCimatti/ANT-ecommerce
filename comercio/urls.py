@@ -30,4 +30,5 @@ urlpatterns += [
     path('get-user/', views.get_user, name='get-user'),
     path('register-user/', views.register_user, name='register-user'),
     path('add-product/', views.add_product, name='add-product'),
+    path('delete-product/', views.delete_product, name='delete-product'),
 ]

@@ -5,11 +5,16 @@ from .models import *
 from .serializers import *
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
+from django.core.exceptions import ObjectDoesNotExist
 # Create your views here.
 
 def bad_request(msg):
     content = {'bad request': msg}
     return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+def not_found(msg):
+    content = {'not found': msg}
+    return Response(content, status=status.HTTP_404_NOT_FOUND)
 
 # ViewSets define the view behavior.
 class ProductoViewSet(viewsets.ModelViewSet):    
@@ -66,9 +71,7 @@ def register_user(request):
     body = request.data
     username = body["username"]
     password = body["password"]
-    print(body)
-    print(username)
-    print(password)
+
     serializer = UserSerializer(data=body)
     
     if serializer.is_valid():
@@ -99,6 +102,37 @@ def add_product(request):
             carrito = carrito,
         )
         return Response(serializer.data)
+
+    else:
+        return bad_request('Body Fallido')
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_product(request):
+
+    body = request.data
+
+    producto_agregado_id = body["producto_agregado"]
+
+    try:
+        producto_agregado = ProductoAgregado.objects.get(id=producto_agregado_id)
+    except ObjectDoesNotExist:
+        return not_found('no existe un objeto con ese id')
+
+
+    carrito = Carrito.objects.get(usuario=request.user, vendido=False)
+
+    serializer = DeleteProductoAgregadoSerializer(data=body)
+    
+    if serializer.is_valid():
+
+        if producto_agregado.carrito == carrito:
+
+            producto_agregado.delete()
+            return Response(serializer.data)
+        else:
+            return bad_request('No es tu carrito')
 
     else:
         return bad_request('Body Fallido')
