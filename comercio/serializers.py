@@ -56,10 +56,17 @@ class CarritoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Carrito
-        fields = ['usuario','vendido','precioFinal','precioVendido','productos']
+        fields = ['id','usuario','vendido','precioFinal','precioVendido','productos']
 
 class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
         fields = ('username', 'password',)
+
+
+class PurchaseCarritoSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Carrito
+        fields = ['id']

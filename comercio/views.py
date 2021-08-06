@@ -136,3 +136,38 @@ def delete_product(request):
 
     else:
         return bad_request('Body Fallido')
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def purchase_cart(request):
+
+    body = request.data
+
+    auth_user = request.user
+
+    carrito_id = body["carrito"]
+
+    try:
+        carrito_body = Carrito.objects.get(id=carrito_id)
+    except ObjectDoesNotExist:
+        return not_found('no existe un objeto con ese id')
+
+
+    carrito_user = Carrito.objects.get(usuario=auth_user, vendido=False)
+
+    serializer = PurchaseCarritoSerializer(data=body)
+
+    if serializer.is_valid():
+
+        if carrito_user == carrito_body:
+            carrito_user.vendido = True
+            carrito_user.save()
+            Carrito.objects.create(usuario=auth_user)
+            return Response(serializer.data)
+
+        else:
+            return bad_request('No es tu carrito')
+
+    else:
+        return bad_request('Body Fallido')
