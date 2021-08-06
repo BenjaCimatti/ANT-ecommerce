@@ -69,10 +69,36 @@ def register_user(request):
     print(body)
     print(username)
     print(password)
-    serializer = UserSerializer(data=request.data)
+    serializer = UserSerializer(data=body)
     
     if serializer.is_valid():
         User.objects.create_user(username=username,password=password)
         return Response(serializer.data)
     else:
         return bad_request('Registro Fallido')
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_product(request):
+
+    body = request.data
+
+    producto_id = body["producto"]
+    producto = Producto.objects.get(id=producto_id)
+    unidades = body["unidades"]
+    carrito = Carrito.objects.get(usuario=request.user, vendido=False)
+
+    serializer = AddProductoAgregadoSerializer(data=body)
+    
+    if serializer.is_valid():
+
+        ProductoAgregado.objects.create(
+            producto = producto,
+            unidades = unidades,
+            carrito = carrito,
+        )
+        return Response(serializer.data)
+
+    else:
+        return bad_request('Body Fallido')

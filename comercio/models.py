@@ -99,7 +99,7 @@ class ProductoAgregado(models.Model):
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
     unidades = models.IntegerField()
     precioVendido = models.FloatField(null = True, blank = True)
-    carrito = models.ForeignKey(Carrito, on_delete=models.CASCADE)
+    carrito = models.ForeignKey(Carrito, related_name='productos', on_delete=models.CASCADE)
 
     tracker = FieldTracker()
 

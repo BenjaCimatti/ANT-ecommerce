@@ -31,17 +31,26 @@ class StockSerializer(serializers.ModelSerializer):
         model = Stock
         fields = '__all__'
 
-class CarritoSerializer(serializers.ModelSerializer):
+class AddProductoAgregadoSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = Carrito
-        fields = '__all__'
-        
+        model = ProductoAgregado
+        fields = ['producto','unidades']
+
 class ProductoAgregadoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductoAgregado
-        fields = '__all__'
+        exclude = ['carrito']
+        depth = 1
+
+class CarritoSerializer(serializers.ModelSerializer):
+
+    productos = ProductoAgregadoSerializer(many=True)
+
+    class Meta:
+        model = Carrito
+        fields = ['usuario','vendido','precioFinal','precioVendido','productos']
 
 class UserSerializer(serializers.ModelSerializer):
 
